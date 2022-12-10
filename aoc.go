@@ -25,5 +25,7 @@ func main() {
 		days.Day2(input)
 	case "3":
 		days.Day3(input)
+	case "4":
+		days.Day4(input)
 	}
 }
