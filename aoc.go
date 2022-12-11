@@ -7,8 +7,7 @@ import (
 	"github.com/tomerpeleg-pub/aoc2022/days"
 )
 
-func main() {
-	day := os.Args[1]
+func GetDayInput(day string) string {
 
 	content, err := os.ReadFile("inputs/day" + day)
 
@@ -16,7 +15,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	input := string(content)
+	return string(content)
+}
+
+func RunDay(day string) {
+	input := GetDayInput(day)
 
 	switch day {
 	case "1":
@@ -32,4 +35,10 @@ func main() {
 	case "6":
 		days.Day6(input)
 	}
+}
+
+func main() {
+	day := os.Args[1]
+
+	RunDay(day)
 }
