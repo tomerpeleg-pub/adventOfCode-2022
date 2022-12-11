@@ -34,6 +34,8 @@ func RunDay(day string) {
 		days.Day5(input)
 	case "6":
 		days.Day6(input)
+	case "7":
+		days.Day7(input)
 	}
 }
 
