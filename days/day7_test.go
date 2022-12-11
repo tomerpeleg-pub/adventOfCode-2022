@@ -33,7 +33,7 @@ $ ls
 func TestDay7Part1(t *testing.T) {
 	t.Log("Testing Day7 Part 1")
 
-	want := int64(95437)
+	want := 95437
 	got := Day7Part1(example7)
 
 	if got != want {
@@ -44,7 +44,7 @@ func TestDay7Part1(t *testing.T) {
 func TestDay7Part2(t *testing.T) {
 	t.Log("Testing Day7 Part 2")
 
-	want := int64(24933642)
+	want := 24933642
 	got := Day7Part2(example7)
 
 	if got != want {

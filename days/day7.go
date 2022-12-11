@@ -1,117 +1,119 @@
 package days
 
 import (
+	"bufio"
 	"fmt"
-	"math/big"
 	"strconv"
 	"strings"
 )
 
-type fileStructure map[string]big.Int
+type file struct {
+	size int
+	path []string
+}
+
+type fileStructure map[string]int
+
+func (fs fileStructure) AddSizes(path []string, size int) fileStructure {
+	r := "/"
+	for _, dir := range path {
+		if dir != "/" {
+			r += "/" + dir
+		}
+		fs[r] += size
+	}
+	return fs
+}
 
 func parseCommands(input string) fileStructure {
-	curDir := ""
-	files := fileStructure{
-		"/": *big.NewInt(0),
-	}
+	scanner := bufio.NewScanner(strings.NewReader(input))
 
-	for _, line := range strings.Split(input, "\n") {
-		vals := strings.Fields(line)
+	files := fileStructure{}
+	curPath := []string{"/"}
+	curSize := 0
 
-		if len(vals) < 2 {
+	// Loop through each line
+	for scanner.Scan() {
+		line := scanner.Text()
+		args := strings.Split(line, " ")
+
+		// Ignore empty lines
+		if len(args) < 2 {
 			continue
 		}
 
-		if vals[0] == "$" {
-			switch vals[1] {
-			case "cd":
-				switch vals[2] {
-				case "/":
-					curDir = "/"
-				case "..":
-					curDir = curDir[:strings.LastIndex(curDir, "/")]
-				default:
-					if curDir == "/" {
-						curDir += vals[2]
-					} else {
-						curDir += "/" + vals[2]
-					}
-				}
-			case "ls":
-			}
-		} else {
-			switch vals[0] {
-			case "dir":
-				newDir := curDir + "/" + vals[1]
-				if curDir == "/" {
-					newDir = "/" + vals[1]
-				}
-				_, ok := files[newDir]
+		switch args[1] {
+		case "cd":
+			// Save size of current directory to map
+			files = files.AddSizes(curPath, curSize)
+			curSize = 0
 
-				if !ok {
-					files[newDir] = *big.NewInt(0)
-				}
+			// When changing directory...
+			switch args[2] {
+			case "/":
+				// only happens once, so can ignore
+				continue
+			case "..":
+				// When going to parent, add current directories
+				// total size to all the parents'
+				curPath = curPath[:len(curPath)-1]
 			default:
-				size, _ := strconv.ParseInt(vals[0], 10, 64)
-				bigSize := *big.NewInt(size)
-				bigFile := files[curDir]
-				files[curDir] = *bigSize.Add(&bigSize, &bigFile)
+				// When going deeper, just reset the counters
+				curSize = 0
+				curPath = append(curPath, args[2])
 			}
+
+		case "ls":
+			// Don't care
+			continue
+
+		default:
+			// Don't care about directories in ls
+			if args[0] == "dir" {
+				continue
+			}
+
+			// Add file size to iterator
+			size, _ := strconv.Atoi(args[0])
+			curSize += size
 		}
 	}
 
-	newFiles := fileStructure{}
-
-	for dir, dirSize := range files {
-		subTotal := big.NewInt(0)
-
-		for sub, subSize := range files {
-			if sub != dir && strings.Contains(sub, dir) {
-				subTotal.Add(subTotal, &subSize)
-			}
-		}
-
-		newFiles[dir] = *subTotal.Add(subTotal, &dirSize)
-	}
-
-	return newFiles
+	// Have to repeat for the last directory
+	return files.AddSizes(curPath, curSize)
 }
 
-func Day7Part1(input string) int64 {
+func Day7Part1(input string) int {
 	files := parseCommands(input)
+	total := 0
 
-	var total big.Int = *big.NewInt(0)
-
-	min := big.NewInt(100000)
+	max := 100000
 	for _, size := range files {
-		if size.Cmp(min) <= 0 {
-			total = *total.Add(&size, &total)
+		if size <= max {
+			total += size
 		}
 	}
 
-	return total.Int64()
+	return total
 }
 
-func Day7Part2(input string) int64 {
-	totalSpace := big.NewInt(70000000)
-	requiredSpace := big.NewInt(30000000)
-
+func Day7Part2(input string) int {
 	files := parseCommands(input)
 
-	rootSize := files["/"]
+	totalDiskSpace := 70000000
+	requiredUnusedSpace := 30000000
+	unusedSpace := totalDiskSpace - files["/"]
+	target := requiredUnusedSpace - unusedSpace
 
-	freeSpace := totalSpace.Sub(totalSpace, &rootSize)
-	minSpace := requiredSpace.Sub(requiredSpace, freeSpace)
+	curMin := files["/"]
 
-	smallest := rootSize
-
-	for _, size := range files {
-		if size.Cmp(minSpace) >= 0 && size.Cmp(&smallest) < 0 {
-			smallest = size
+	for _, space := range files {
+		if space >= target && space < curMin {
+			curMin = space
 		}
 	}
 
-	return smallest.Int64()
+	return curMin
 }
 
 func Day7(input string) {
