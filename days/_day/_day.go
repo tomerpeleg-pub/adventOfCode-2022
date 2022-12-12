@@ -1,17 +1,17 @@
-// package days
+package dayx
 
-// import "fmt"
+import "fmt"
 
-// func Day4Part1(input string) int {
-// 	return 12
-// }
+func DayXPart1(input string) int {
+	return 12
+}
 
-// func Day4Part2(input string) int {
-// 	return 12
-// }
+func DayXPart2(input string) int {
+	return 12
+}
 
-// func Day4(input string) {
-// 	fmt.Println("Day 4 -----")
-// 	fmt.Println("Part 1:", Day4Part1(input))
-// 	fmt.Println("Part 2:", Day4Part2(input))
-// }
+func Run(input string) {
+	fmt.Println("Day X -----")
+	fmt.Println("Part 1:", DayXPart1(input))
+	fmt.Println("Part 2:", DayXPart2(input))
+}

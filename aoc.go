@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	"github.com/tomerpeleg-pub/aoc2022/days/day1"
@@ -12,21 +11,12 @@ import (
 	"github.com/tomerpeleg-pub/aoc2022/days/day6"
 	"github.com/tomerpeleg-pub/aoc2022/days/day7"
 	"github.com/tomerpeleg-pub/aoc2022/days/day8"
+	"github.com/tomerpeleg-pub/aoc2022/days/day9"
+	"github.com/tomerpeleg-pub/aoc2022/util"
 )
 
-func GetDayInput(day string) string {
-
-	content, err := os.ReadFile("inputs/day" + day)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return string(content)
-}
-
 func RunDay(day string) {
-	input := GetDayInput(day)
+	input := util.GetDayInput(day)
 
 	switch day {
 	case "1":
@@ -45,6 +35,8 @@ func RunDay(day string) {
 		day7.Day7(input)
 	case "8":
 		day8.Run(input)
+	case "9":
+		day9.Run(input)
 	}
 }
 
