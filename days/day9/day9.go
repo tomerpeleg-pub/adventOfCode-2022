@@ -3,84 +3,33 @@ package day9
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
 	"github.com/tomerpeleg-pub/aoc2022/util"
 )
 
-type Point struct {
-	x int
-	y int
-}
-type Move Point
-
-func (p Point) String() string {
-	return fmt.Sprintf("%v:%v", p.x, p.y)
+var dirs map[string]complex128 = map[string]complex128{
+	"L": 1,
+	"R": -1,
+	"U": -1i,
+	"D": 1i,
 }
 
-func (p Point) Move(m Move) Point {
-	return Point{
-		x: p.x + m.x,
-		y: p.y + m.y,
-	}
-}
-
-func (p Point) Catch(h Point) (Point, bool) {
-	diff, abs := h.Diff(p)
-
-	if !(abs.x > 1 || abs.y > 1) {
-		return p, false
-	}
-
-	if abs.x > 0 && abs.y > 0 {
-		p.x += diff.x / abs.x
-		p.y += diff.y / abs.y
-	} else if abs.x > 1 {
-		p.x += diff.x / abs.x
-	} else if abs.y > 1 {
-		p.y += diff.y / abs.y
-	}
-
-	return p, abs.x > 1 || abs.y > 1
-}
-
-func Abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
-
-func (p Point) Diff(p2 Point) (Point, Point) {
-	return Point{
-			x: p.x - p2.x,
-			y: p.y - p2.y,
-		}, Point{
-			x: Abs(p.x - p2.x),
-			y: Abs(p.y - p2.y),
-		}
+type Move struct {
+	dir complex128
+	num int
 }
 
 func parseMove(input string) Move {
-	vals := strings.Split(input, " ")
-	dir := vals[0]
-	num, _ := strconv.Atoi(vals[1])
+	vals := strings.Fields(input)
+	n, _ := strconv.Atoi(vals[1])
 
-	move := Move{}
-
-	switch dir {
-	case "R":
-		move.x = num
-	case "U":
-		move.y = -num
-	case "L":
-		move.x = -num
-	case "D":
-		move.y = num
+	return Move{
+		dir: dirs[vals[0]],
+		num: n,
 	}
-
-	return move
 }
 
 func parseInput(input string) []Move {
@@ -97,80 +46,77 @@ func parseInput(input string) []Move {
 	return moves
 }
 
+func Norm(num complex128) complex128 {
+	r := 0.0
+	c := 0.0
+
+	if real(num) > 0 {
+		r = 1
+	} else if real(num) < 0 {
+		r = -1
+	}
+	if imag(num) > 0 {
+		c = 1
+	} else if imag(num) < 0 {
+		c = -1
+	}
+
+	return complex(r, c)
+}
+
+func Snake(size int, moves []Move) int {
+
+	// for each part of snake, real part is x, imag part is y
+	snake := make([]complex128, size)
+
+	// keep track of the points seen by the tail
+	seen := map[complex128]bool{
+		(0 + 0i): true,
+	}
+
+	for _, move := range moves {
+
+		// for each move, perform each step invidually
+		for i := 0; i < move.num; i++ {
+
+			// move the head
+			snake[0] += move.dir
+
+			// move each of the tail pieces
+			for t := range snake[1:] {
+
+				// get the distance between tail piece and the one
+				// in front of it
+				dist := snake[t] - snake[t+1]
+				abs := complex(math.Abs(real(dist)), math.Abs(imag(dist)))
+
+				if real(abs) > 1 || imag(abs) > 1 {
+
+					// move tail piece by 1 in the right direction
+					snake[t+1] += Norm(dist)
+
+					// mark as seen if the piece is the last tail
+					if t == size-2 {
+						seen[snake[t+1]] = true
+					}
+				}
+			}
+		}
+	}
+
+	return len(seen)
+}
+
 func Part1(input string) int {
 	moves := parseInput(input)
 
-	head := Point{x: 0, y: 0}
-	tail := Point{x: 0, y: 0}
-
-	visited := map[string]bool{"0:0": true}
-
-	for _, move := range moves {
-		head = head.Move(move)
-
-		for t, caught := tail.Catch(head); caught; t, caught = tail.Catch(head) {
-			tail = t
-			visited[tail.String()] = true
-		}
-	}
-
-	return len(visited)
-}
-
-func PrintSnake(snake [10]Point) {
-	str := [40]string{}
-
-	for y := 0; y < 40; y++ {
-
-		str[y] = ""
-
-	cell:
-		for x := 0; x < 40; x++ {
-
-			for i, t := range snake {
-				if t.x == x-20 && t.y == y-20 {
-					str[y] += fmt.Sprint(i)
-					continue cell
-				}
-			}
-
-			str[y] += "."
-		}
-
-		str[y] += "\n"
-	}
-
-	fmt.Println(str)
+	return Snake(2, moves)
 }
 
 func Part2(input string) int {
 	moves := parseInput(input)
-	snake := [10]Point{}
-	visited := map[string]bool{"0:0": true}
 
-	for _, move := range moves {
-
-	tails:
-		for i := range snake {
-			if i == 0 {
-				snake[0] = snake[0].Move(move)
-				continue tails
-			}
-
-			for t, more := snake[i].Catch(snake[i-1]); more; t, more = snake[i].Catch(snake[i-1]) {
-				snake[i] = t
-
-				if i == len(snake)-1 {
-					visited[t.String()] = true
-				}
-			}
-		}
-
-		// fmt.Println("==  ", move, "  ==")
-		// PrintSnake(snake)
-	}
-
-	return len(visited)
+	return Snake(10, moves)
 }
 
 func Run(input string) {
