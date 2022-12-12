@@ -4,7 +4,14 @@ import (
 	"log"
 	"os"
 
-	"github.com/tomerpeleg-pub/aoc2022/days"
+	"github.com/tomerpeleg-pub/aoc2022/days/day1"
+	"github.com/tomerpeleg-pub/aoc2022/days/day2"
+	"github.com/tomerpeleg-pub/aoc2022/days/day3"
+	"github.com/tomerpeleg-pub/aoc2022/days/day4"
+	"github.com/tomerpeleg-pub/aoc2022/days/day5"
+	"github.com/tomerpeleg-pub/aoc2022/days/day6"
+	"github.com/tomerpeleg-pub/aoc2022/days/day7"
+	"github.com/tomerpeleg-pub/aoc2022/days/day8"
 )
 
 func GetDayInput(day string) string {
@@ -23,19 +30,21 @@ func RunDay(day string) {
 
 	switch day {
 	case "1":
-		days.Day1(input)
+		day1.Day1(input)
 	case "2":
-		days.Day2(input)
+		day2.Day2(input)
 	case "3":
-		days.Day3(input)
+		day3.Day3(input)
 	case "4":
-		days.Day4(input)
+		day4.Day4(input)
 	case "5":
-		days.Day5(input)
+		day5.Day5(input)
 	case "6":
-		days.Day6(input)
+		day6.Day6(input)
 	case "7":
-		days.Day7(input)
+		day7.Day7(input)
+	case "8":
+		day8.Run(input)
 	}
 }
 
