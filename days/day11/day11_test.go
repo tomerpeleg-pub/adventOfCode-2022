@@ -37,7 +37,7 @@ Monkey 3:
 func TestPart1(t *testing.T) {
 	t.Log("Testing Day11 Part 1")
 
-	var want uint64 = 10605
+	var want int64 = 10605
 	got := Part1(example)
 
 	if got != want {
@@ -48,7 +48,7 @@ func TestPart1(t *testing.T) {
 func TestPart2(t *testing.T) {
 	t.Log("Testing Day11 Part 2")
 
-	var want uint64 = 2713310158
+	var want int64 = 2713310158
 	got := Part2(example)
 
 	if got != want {

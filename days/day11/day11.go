@@ -13,6 +13,7 @@ type Monkey struct {
 	Items   []int64
 	Op      func(int64) int64
 	Test    func(int64) bool
+	Tester  int64
 	IfTrue  int64
 	IfFalse int64
 	Count   int64
@@ -87,6 +88,7 @@ func parseInput(input string) []Monkey {
 			// Test
 			str := numsReg.FindAllString(line, -1)
 			n, _ := strconv.ParseInt(str[0], 10, 64)
+			curMonkey.Tester = n
 			curMonkey.Test = Test(n)
 		case 4:
 			// If true
@@ -112,11 +114,16 @@ func parseInput(input string) []Monkey {
 }
 
 func MonkeyBusiness(monkeys []Monkey, rounds int, worryDivider int64) int64 {
+	var worryMod int64 = 1
+	for _, monkey := range monkeys {
+		worryMod *= monkey.Tester
+	}
+
 	for i := 0; i < rounds; i++ {
 		for m, monkey := range monkeys {
 			for _, item := range monkey.Items {
 				monkeys[m].Count++
-				newWorry := monkey.Op(item) / worryDivider
+				newWorry := (monkey.Op(item) % worryMod) / worryDivider
 
 				if monkey.Test(newWorry) {
 					monkeys[monkey.IfTrue].Items = append(monkeys[monkey.IfTrue].Items, newWorry)
@@ -161,7 +168,7 @@ func Part1(input string) int64 {
 
 func Part2(input string) int64 {
 	monkeys := parseInput(input)
-	return MonkeyBusiness(monkeys, 1000, 1)
+	return MonkeyBusiness(monkeys, 10000, 1)
 }
 
 func Run(input string) {
