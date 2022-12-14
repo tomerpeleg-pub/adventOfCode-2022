@@ -1,7 +1,6 @@
 package day12
 
 import (
-	"bufio"
 	"container/heap"
 	"fmt"
 	"math"
@@ -13,15 +12,64 @@ type Point struct {
 	y int
 }
 
+func parseInput(input string) (grid [][]int, start, end Point) {
+	lines := strings.Split(strings.TrimSpace(input), "\n")
+
+	grid = make([][]int, len(lines))
+
+	for y, line := range lines {
+		grid[y] = make([]int, len(line))
+
+		for x, char := range line {
+
+			p := Point{x, y}
+
+			if char == 'S' {
+				start = p
+				grid[y][x] = 0
+			} else if char == 'E' {
+				end = p
+				grid[y][x] = 25
+			} else {
+				grid[y][x] = int(char - 'a')
+			}
+		}
+	}
+
+	return
+}
+
 func (p Point) String() string {
 	return fmt.Sprintf("%v:%v", p.x, p.y)
 }
 
+func Neighbours(grid [][]int, node Point) (neighbours []Point) {
+	h := len(grid)
+	w := len(grid[0])
+
+	// North
+	if node.y > 0 {
+		neighbours = append(neighbours, Point{node.x, node.y - 1})
+	}
+	// South
+	if node.y < h-1 {
+		neighbours = append(neighbours, Point{node.x, node.y + 1})
+	}
+	// West
+	if node.x > 0 {
+		neighbours = append(neighbours, Point{node.x - 1, node.y})
+	}
+	// East
+	if node.x < w-1 {
+		neighbours = append(neighbours, Point{node.x + 1, node.y})
+	}
+
+	return
+}
+
 type Node struct {
-	height     int
-	point      Point
-	dist       int
-	neighbours []Node
+	point Point
+	dist  int
 }
 
 type PriorityQueue []Node
@@ -42,190 +90,73 @@ func (pq *PriorityQueue) Pop() (popped interface{}) {
 	return
 }
 
-func (node *Node) Neighbours(grid Grid) []Node {
-	neighbours := []Node{}
-
-	h := len(grid)
-	w := len(grid[0])
-
-	// North
-	if node.point.y > 0 {
-		north := grid[node.point.y-1][node.point.x]
-		diff := north.height - node.height
-
-		if diff <= 1 {
-			neighbours = append(neighbours, north)
-		}
-	}
-
-	// South
-	if node.point.y < h-1 {
-		south := grid[node.point.y+1][node.point.x]
-		diff := south.height - node.height
-
-		if diff <= 1 {
-			neighbours = append(neighbours, south)
-		}
-	}
-
-	// East
-	if node.point.x > 0 {
-		east := grid[node.point.y][node.point.x-1]
-		diff := east.height - node.height
-
-		if diff <= 1 {
-			neighbours = append(neighbours, east)
-		}
-	}
-
-	// West
-	if node.point.x < w-1 {
-		west := grid[node.point.y][node.point.x+1]
-		diff := west.height - node.height
-
-		if diff <= 1 {
-			neighbours = append(neighbours, west)
-		}
-	}
-
-	node.neighbours = neighbours
-
-	return neighbours
-}
-
-type Grid [][]Node
-
-func (grid Grid) String() string {
-	str := ""
-
-	for _, row := range grid {
-		for _, node := range row {
-			str += string(rune(node.height + 'a'))
-		}
-		str += "\n"
-	}
-
-	return str
-}
-
-func parseInput(input string) (grid Grid, start *Node, end *Node) {
-	reader := strings.NewReader(strings.TrimSpace(input))
-	scanner := bufio.NewScanner(reader)
-
-	y := 0
-
-	for scanner.Scan() {
-		line := scanner.Text()
-		grid = append(grid, []Node{})
-
-		for x, char := range line {
-			node := Node{point: Point{x, y}}
-
-			if char == 'S' {
-				node.height = 0
-				node.dist = 0
-				start = &node
-			} else if char == 'E' {
-				node.height = int('z' - 'a')
-				node.dist = math.MaxInt32
-				end = &node
-			} else {
-				node.dist = math.MaxInt32
-				node.height = int(char - 'a')
-			}
-
-			grid[y] = append(grid[y], node)
-		}
-
-		y++
-	}
-
-	return grid, start, end
-}
-
-func fastestRoute(start Node, end Node, grid Grid) int {
+// Dijkstra's
+func fastestRoute(grid [][]int, start Point, check func(p Point) bool) int {
+	distances := map[string]int{}
 	visited := map[string]bool{}
 	queue := &PriorityQueue{}
 	heap.Init(queue)
-
-	for y, row := range grid {
-		for x, col := range row {
-			if col.height == 0 {
-				grid[y][x].dist = 0
-				queue.Push(grid[y][x])
-			} else {
-				grid[y][x].dist = math.MaxInt
-			}
-		}
-	}
+	heap.Push(queue, Node{start, 0})
 
 	for queue.Len() > 0 {
-		// fmt.Println("Step:", queue)
 		cur := heap.Pop(queue).(Node)
+
 		if visited[cur.point.String()] {
 			continue
 		}
 
-		dist := cur.dist
+		curVal := grid[cur.point.y][cur.point.x]
+		curDist := cur.dist
 
-		if cur.neighbours == nil {
-			cur.Neighbours(grid)
-		}
+		neighbours := Neighbours(grid, cur.point)
 
-	neighbourLoop:
-		for _, neighbour := range cur.neighbours {
-			if visited[neighbour.point.String()] {
-				continue neighbourLoop
+	neighboursLoop:
+		for _, neighbour := range neighbours {
+			nVal := grid[neighbour.y][neighbour.x]
+
+			if curVal-nVal > 1 || visited[neighbour.String()] {
+				continue neighboursLoop
+			}
+			nDist := distances[neighbour.String()]
+
+			if nDist == 0 {
+				nDist = math.MaxInt
 			}
 
-			tDist := dist + 1
-
-			if tDist < neighbour.dist {
-				neighbour.dist = tDist
+			if nDist > curDist+1 {
+				nDist = curDist + 1
 			}
 
-			if neighbour.point.String() == end.point.String() {
-				return tDist
+			if check(neighbour) {
+				return nDist
 			}
 
-			heap.Push(queue, neighbour)
+			distances[neighbour.String()] = nDist
+			heap.Push(queue, Node{neighbour, nDist})
 		}
 
 		visited[cur.point.String()] = true
 	}
 
-	return math.MaxInt32
+	return -1
 }
 
 func Part1(input string) int {
 	grid, start, end := parseInput(input)
-	dist := fastestRoute(*start, *end, grid)
+	dist := fastestRoute(grid, end, func(p Point) bool {
+		return p.String() == start.String()
+	})
 
 	return dist
 }
 
 func Part2(input string) int {
-	grid, start, end := parseInput(input)
+	grid, _, end := parseInput(input)
+	dist := fastestRoute(grid, end, func(p Point) bool {
+		return grid[p.y][p.x] == 0
+	})
 
-	lowest := fastestRoute(*start, *end, grid)
-	count := 0
-
-	// for _, row := range grid {
-	// 	for _, node := range row {
-	// 		if node.height == 0 {
-	// 			dist
-	// 			count++
-
-	// 			if dist < lowest {
-	// 				lowest = dist
-	// 				fmt.Println("New lowest:", node.point, "dist", dist)
-	// 			}
-	// 		}
-	// 	}
-	// }
-	fmt.Println("Checked:", count, "lowest:", lowest)
-
-	return lowest
+	return dist
 
 }
 
