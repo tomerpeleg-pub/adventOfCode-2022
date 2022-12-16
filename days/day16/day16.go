@@ -69,9 +69,9 @@ func copyMap(a map[string]bool) map[string]bool {
 	return b
 }
 
-func bestPath(valves map[string]Valve, opened map[string]bool, start Valve, mins int, total int) int {
+func bestPath(valves map[string]Valve, opened map[string]bool, start Valve, mins int, total int) (int, string) {
 	if mins <= 1 {
-		return total
+		return total, ""
 	}
 
 	time := mins
@@ -85,6 +85,7 @@ func bestPath(valves map[string]Valve, opened map[string]bool, start Valve, mins
 	}
 
 	curHighest := curTotal
+	bestNode := ""
 
 	for id, dist := range start.tunnels {
 		if dist > time {
@@ -95,14 +96,15 @@ func bestPath(valves map[string]Valve, opened map[string]bool, start Valve, mins
 		}
 		v := valves[id]
 
-		result := bestPath(valves, newOpened, v, time-dist, curTotal)
+		result, _ := bestPath(valves, newOpened, v, time-dist, curTotal)
 
 		if result > curHighest {
 			curHighest = result
+			bestNode = id
 		}
 	}
 
-	return curHighest
+	return curHighest, bestNode
 }
 
 type QueueNode struct {
@@ -147,7 +149,7 @@ func getVertexes(valves map[string]Valve, start string) Valve {
 	return v
 }
 
-func Part1(input string) int {
+func getPairs(input string) map[string]Valve {
 	valves := parseInput(input)
 	newValves := map[string]Valve{
 		"AA": getVertexes(valves, "AA"),
@@ -159,21 +161,104 @@ func Part1(input string) int {
 		}
 	}
 
-	fmt.Println(newValves)
+	return newValves
+}
 
-	best := bestPath(newValves, map[string]bool{}, newValves["AA"], 30, 0)
+func Part1(input string) int {
+	valves := getPairs(input)
+	best, node := bestPath(valves, map[string]bool{}, valves["AA"], 30, 0)
 
-	fmt.Println(best)
+	fmt.Println(best, "node:", node)
 
 	return best
 }
 
+type Player struct {
+	node Valve
+	wait int
+}
+
+func calcScore(valves map[string]Valve, opened map[string]bool) int {
+	total := 0
+
+	op := []string{}
+
+	for id, opened := range opened {
+		if opened {
+			total += valves[id].flow
+			op = append(op, id)
+		}
+	}
+
+	fmt.Println("Open valves:", op, "pressure:", total)
+
+	return total
+}
+
+// Not working
+func bestTwoPlayerPath(valves map[string]Valve, start Valve, mins int) int {
+	p1 := Player{start, 0}
+	p2 := Player{start, 0}
+	opened := map[string]bool{}
+	curScore := 0
+
+	for i := 1; i < mins; i++ {
+		fmt.Println("== Minute", i, "==")
+		newOpened := copyMap(opened)
+		newOpened[p1.node.id] = true
+		newOpened[p2.node.id] = true
+
+		// p1
+		if p1.wait == 1 {
+			opened[p1.node.id] = true
+			fmt.Println("Min", i, "Player 1 opens valve", p1.node.id)
+			p1.wait--
+		} else if p1.wait == 0 {
+			_, node := bestPath(valves, newOpened, p1.node, mins-i, 0)
+
+			if node != p1.node.id && node != "" {
+				p1.wait = valves[p1.node.id].tunnels[node]
+				fmt.Println("Min", i, "Player 1 moves from", p1.node.id, "to", node, ", taking", p1.wait, "days")
+				p1.node = valves[node]
+				newOpened[node] = true
+			} else {
+				p1.wait = 500
+			}
+		} else {
+			fmt.Println("Min", i, "Player 1 on way to", p1.node.id)
+			p1.wait--
+		}
+
+		// p2
+		if p2.wait == 1 {
+			opened[p2.node.id] = true
+			fmt.Println("Min", i, "Player 2 opens valve", p2.node.id)
+			p2.wait--
+		} else if p2.wait == 0 {
+			_, node := bestPath(valves, newOpened, p2.node, mins-i, 0)
+
+			if node != p2.node.id && node != "" {
+				p2.wait = valves[p2.node.id].tunnels[node]
+				fmt.Println("Min", i, "Player 2 moves from", p2.node.id, "to", node, ", taking", p2.wait, "days")
+				p2.node = valves[node]
+			} else {
+				p2.wait = 500
+			}
+		} else {
+			fmt.Println("Min", i, "Player 2 on way to", p2.node.id)
+			p2.wait--
+		}
+
+		curScore += calcScore(valves, opened)
+	}
+
+	return curScore
+}
+
 func Part2(input string) int {
-	valves := parseInput(input)
-
+	valves := getPairs(input)
 	fmt.Println(valves)
-
-	best := bestPath(valves, map[string]bool{}, valves["AA"], 30, 0)
+	best := bestTwoPlayerPath(valves, valves["AA"], 26)
 
 	fmt.Println(best)
 
