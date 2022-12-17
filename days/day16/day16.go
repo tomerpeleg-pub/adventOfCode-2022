@@ -202,7 +202,7 @@ func bestTwoPlayerPath(valves map[string]Valve, start Valve, mins int) int {
 	opened := map[string]bool{}
 	curScore := 0
 
-	for i := 1; i < mins; i++ {
+	for i := 1; i <= mins; i++ {
 		fmt.Println("== Minute", i, "==")
 		newOpened := copyMap(opened)
 		newOpened[p1.node.id] = true
