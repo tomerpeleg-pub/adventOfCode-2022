@@ -39,6 +39,8 @@ const (
 )
 
 func (grid Grid) Get(point Point) int {
+
+	// Allow 1 space outside the grid (needed for p2 floodfill)
 	if point.x < -1 || point.y < -1 || point.z < -1 ||
 		point.x > 1+grid.w || point.y > 1+grid.h || point.z > 1+grid.d {
 		return OUT
@@ -53,23 +55,16 @@ func (grid *Grid) Set(point Point, val int) {
 
 func (grid Grid) Neighbours(point Point) []Point {
 	return []Point{
-		//up
-		{point.x, point.y - 1, point.z},
-		//down
-		{point.x, point.y + 1, point.z},
-		//left
-		{point.x - 1, point.y, point.z},
-		//right
-		{point.x + 1, point.y, point.z},
-		//forward
-		{point.x, point.y, point.z + 1},
-		//back
-		{point.x, point.y, point.z - 1},
+		{point.x, point.y - 1, point.z}, //up
+		{point.x, point.y + 1, point.z}, //down
+		{point.x - 1, point.y, point.z}, //left
+		{point.x + 1, point.y, point.z}, //right
+		{point.x, point.y, point.z + 1}, //forward
+		{point.x, point.y, point.z - 1}, //back
 	}
 }
 
 func parseInput(input string) Grid {
-
 	reader := strings.NewReader(strings.TrimSpace(input))
 	scanner := bufio.NewScanner(reader)
 
@@ -103,16 +98,22 @@ func Part1(input string) int {
 
 	count := 0
 
+	// loop through every point on the grid
 	for x := 0; x <= grid.w; x++ {
 		for y := 0; y <= grid.h; y++ {
 			for z := 0; z <= grid.d; z++ {
 				p := Point{x, y, z}
 				g := grid.Get(p)
 
+				// if the point has a cube on it
 				if g == FILLED {
-					neighbours := grid.Neighbours(p)
 
+					// loop through its' neighbours
+					neighbours := grid.Neighbours(p)
 					for _, n := range neighbours {
+
+						// if the neighbour is not a cube
+						// count it
 						if grid.Get(n) != FILLED {
 							count++
 						}
@@ -129,28 +130,40 @@ var total int = 0
 
 func (grid *Grid) FloodFill(point Point, val int) {
 	myVal := grid.Get(point)
+
+	// Already visited, halt
 	if myVal == val {
 		return
 	}
 
-	neighbours := grid.Neighbours(point)
+	// fill this points value
 	grid.Set(point, val)
 
+	// loop through all neighoburs
+	neighbours := grid.Neighbours(point)
 	for _, n := range neighbours {
 		v := grid.Get(n)
 
+		// if the neighbour is the same as this point (used to be)
 		if v == myVal {
+			// then continue filling from there
 			grid.FloodFill(n, val)
 		} else if v == FILLED {
+			// count how many cubes we come across
+			// (avoids having to loop over newly filled points afterwards)
 			total++
 		}
 	}
 }
 
 func Part2(input string) int {
-	total = 0
 	grid := parseInput(input)
-	grid.FloodFill(Point{0, 0, 0}, OUTSIDE)
+	total = 0 // Count of empty spaces
+
+	// Starting at a corner outside the grid,
+	// fill all the outside spaces with OUTSIDE=2
+	// as you do, count any cubes that are found
+	grid.FloodFill(Point{-1, -1, -1}, OUTSIDE)
 	return total
 }
 
