@@ -19,14 +19,56 @@ type Point struct {
 	x, y, z int
 }
 
-type Grid struct {
-	cubes [][][]bool
-	w     int
-	h     int
-	d     int
+func (p Point) String() string {
+	return fmt.Sprintf("{%v:%v:%v}", p.x, p.y, p.z)
 }
 
-func parseInput(input string) ([]Point, Grid) {
+type Grid struct {
+	points map[string]int
+
+	w int
+	h int
+	d int
+}
+
+const (
+	OUT     = -1
+	EMPTY   = 0
+	FILLED  = 1
+	OUTSIDE = 2
+)
+
+func (grid Grid) Get(point Point) int {
+	if point.x < -1 || point.y < -1 || point.z < -1 ||
+		point.x > 1+grid.w || point.y > 1+grid.h || point.z > 1+grid.d {
+		return OUT
+	}
+
+	return grid.points[point.String()]
+}
+
+func (grid *Grid) Set(point Point, val int) {
+	grid.points[point.String()] = val
+}
+
+func (grid Grid) Neighbours(point Point) []Point {
+	return []Point{
+		//up
+		{point.x, point.y - 1, point.z},
+		//down
+		{point.x, point.y + 1, point.z},
+		//left
+		{point.x - 1, point.y, point.z},
+		//right
+		{point.x + 1, point.y, point.z},
+		//forward
+		{point.x, point.y, point.z + 1},
+		//back
+		{point.x, point.y, point.z - 1},
+	}
+}
+
+func parseInput(input string) Grid {
 
 	reader := strings.NewReader(strings.TrimSpace(input))
 	scanner := bufio.NewScanner(reader)
@@ -35,207 +77,81 @@ func parseInput(input string) ([]Point, Grid) {
 	maxY := 0
 	maxZ := 0
 
-	points := []Point{}
+	points := map[string]int{}
 
 	// Loop through each line
 	for scanner.Scan() {
 		line := scanner.Text()
 		nums := strings.Split(line, ",")
-
 		x, _ := strconv.Atoi(nums[0])
 		y, _ := strconv.Atoi(nums[1])
 		z, _ := strconv.Atoi(nums[2])
 
 		p := Point{x, y, z}
+		points[p.String()] = FILLED
 
-		points = append(points, p)
-
-		maxX = Max(maxX, x+1)
-		maxY = Max(maxY, y+1)
-		maxZ = Max(maxZ, z+1)
+		maxX = Max(maxX, x)
+		maxY = Max(maxY, y)
+		maxZ = Max(maxZ, z)
 	}
 
-	grid := make([][][]bool, maxX)
-
-	for x := 0; x < maxX; x++ {
-		grid[x] = make([][]bool, maxY)
-
-		for y := 0; y < maxY; y++ {
-			grid[x][y] = make([]bool, maxZ)
-		}
-	}
-
-	for _, p := range points {
-		grid[p.x][p.y][p.z] = true
-	}
-
-	return points, Grid{
-		grid, maxX, maxY, maxZ,
-	}
-}
-
-func countSides(grid Grid, p Point) int {
-	count := 0
-
-	if p.x == 0 || !grid.cubes[p.x-1][p.y][p.z] {
-		count++
-	}
-	if p.x == grid.w-1 || !grid.cubes[p.x+1][p.y][p.z] {
-		count++
-	}
-
-	if p.y == 0 || !grid.cubes[p.x][p.y-1][p.z] {
-		count++
-	}
-	if p.y == grid.h-1 || !grid.cubes[p.x][p.y+1][p.z] {
-		count++
-	}
-
-	if p.z == 0 || !grid.cubes[p.x][p.y][p.z-1] {
-		count++
-	}
-	if p.z == grid.d-1 || !grid.cubes[p.x][p.y][p.z+1] {
-		count++
-	}
-
-	return count
-}
-
-func countOutsideEdges(grid Grid, p Point) int {
-	count := 0
-
-	if p.x == 0 {
-		count++
-	}
-	if p.x == grid.w-1 {
-		count++
-	}
-
-	if p.y == 0 {
-		count++
-	}
-	if p.y == grid.h-1 {
-		count++
-	}
-
-	if p.z == 0 {
-		count++
-	}
-	if p.z == grid.d-1 {
-		count++
-	}
-
-	return count
+	return Grid{points, maxX, maxY, maxZ}
 }
 
 func Part1(input string) int {
-	points, grid := parseInput(input)
-	total := 0
+	grid := parseInput(input)
 
-	for _, point := range points {
-		total += countSides(grid, point)
-	}
-
-	return total
-}
-
-func findNeighbours(grid Grid, p Point) []Point {
-	neighbours := []Point{}
-
-	if p.x > 0 && !grid.cubes[p.x-1][p.y][p.z] {
-		neighbours = append(neighbours, Point{p.x - 1, p.y, p.z})
-	}
-	if p.x < grid.w-1 && !grid.cubes[p.x+1][p.y][p.z] {
-		neighbours = append(neighbours, Point{p.x + 1, p.y, p.z})
-	}
-
-	if p.y > 0 && !grid.cubes[p.x][p.y-1][p.z] {
-		neighbours = append(neighbours, Point{p.x, p.y - 1, p.z})
-	}
-	if p.y < grid.h-1 && !grid.cubes[p.x][p.y+1][p.z] {
-		neighbours = append(neighbours, Point{p.x, p.y + 1, p.z})
-	}
-
-	if p.z > 0 && !grid.cubes[p.x][p.y][p.z-1] {
-		neighbours = append(neighbours, Point{p.x, p.y, p.z - 1})
-	}
-	if p.z < grid.d-1 && !grid.cubes[p.x][p.y][p.z+1] {
-		neighbours = append(neighbours, Point{p.x, p.y, p.z + 1})
-	}
-
-	return neighbours
-}
-
-func floodFill(grid Grid, p Point) {
-	if grid.cubes[p.x][p.y][p.z] {
-		return
-	}
-
-	grid.cubes[p.x][p.y][p.z] = true
-	emptyNeighbours := findNeighbours(grid, p)
-
-	for _, en := range emptyNeighbours {
-		floodFill(grid, en)
-	}
-}
-
-func counFilledtSides(grid Grid, p Point) int {
 	count := 0
 
-	if p.x == 0 || grid.cubes[p.x-1][p.y][p.z] {
-		count++
-	}
-	if p.x == grid.w-1 || grid.cubes[p.x+1][p.y][p.z] {
-		count++
-	}
-
-	if p.y == 0 || grid.cubes[p.x][p.y-1][p.z] {
-		count++
-	}
-	if p.y == grid.h-1 || grid.cubes[p.x][p.y+1][p.z] {
-		count++
-	}
-
-	if p.z == 0 || grid.cubes[p.x][p.y][p.z-1] {
-		count++
-	}
-	if p.z == grid.d-1 || grid.cubes[p.x][p.y][p.z+1] {
-		count++
-	}
-
-	return count
-}
-
-func Part2(input string) int {
-	points, grid := parseInput(input)
-	total := 0
-	insideEdges := 0
-
-	for _, point := range points {
-		emptyNeighbours := findNeighbours(grid, point)
-
-		for _, en := range emptyNeighbours {
-			if countOutsideEdges(grid, en) > 0 {
-				floodFill(grid, en)
-			}
-		}
-	}
-
-	for x := range grid.cubes {
-		for y := range grid.cubes[x] {
-			for z, filled := range grid.cubes[x][y] {
+	for x := 0; x <= grid.w; x++ {
+		for y := 0; y <= grid.h; y++ {
+			for z := 0; z <= grid.d; z++ {
 				p := Point{x, y, z}
+				g := grid.Get(p)
 
-				if !filled {
-					insideEdges += counFilledtSides(grid, p)
-				} else {
-					total += countSides(grid, p)
+				if g == FILLED {
+					neighbours := grid.Neighbours(p)
+
+					for _, n := range neighbours {
+						if grid.Get(n) != FILLED {
+							count++
+						}
+					}
 				}
 			}
 		}
 	}
 
-	return Part1(input) - insideEdges
+	return count
+}
+
+var total int = 0
+
+func (grid *Grid) FloodFill(point Point, val int) {
+	myVal := grid.Get(point)
+	if myVal == val {
+		return
+	}
+
+	neighbours := grid.Neighbours(point)
+	grid.Set(point, val)
+
+	for _, n := range neighbours {
+		v := grid.Get(n)
+
+		if v == myVal {
+			grid.FloodFill(n, val)
+		} else if v == FILLED {
+			total++
+		}
+	}
+}
+
+func Part2(input string) int {
+	total = 0
+	grid := parseInput(input)
+	grid.FloodFill(Point{0, 0, 0}, OUTSIDE)
+	return total
 }
 
 func Run(input string) {
