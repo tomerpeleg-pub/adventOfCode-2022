@@ -17,7 +17,7 @@ const example string = `
 func TestPart1(t *testing.T) {
 	t.Log("Testing Day20 Part 1")
 
-	want := 21
+	want := 3
 	got := Part1(example)
 
 	if got != want {
@@ -28,7 +28,7 @@ func TestPart1(t *testing.T) {
 func TestPart2(t *testing.T) {
 	t.Log("Testing Day20 Part 2")
 
-	want := 24933642
+	want := 1623178306
 	got := Part2(example)
 
 	if got != want {
