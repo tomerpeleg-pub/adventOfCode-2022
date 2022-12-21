@@ -9,7 +9,7 @@ import (
 
 type Monkey struct {
 	Name   string
-	Shout  int
+	Shout  complex128
 	Wait   []string
 	Action string
 	Done   bool
@@ -31,8 +31,8 @@ func parseInput(input string) map[string]Monkey {
 		monkey := Monkey{Name: vals[0][0:4]}
 
 		if len(vals) == 2 {
-			val, _ := strconv.Atoi(vals[1])
-			monkey.Shout = val
+			val, _ := strconv.ParseFloat(vals[1], 64)
+			monkey.Shout = complex(val, 0)
 			monkey.Done = true
 		} else {
 			monkey.Wait = []string{vals[1], vals[3]}
@@ -46,18 +46,18 @@ func parseInput(input string) map[string]Monkey {
 	return monkeys
 }
 
-func GetShout(monkeys Monkeys, id string) int {
+func GetShout(monkeys Monkeys, id string) complex128 {
 	monkey := monkeys[id]
 	if monkey.Done {
 		return monkey.Shout
 	}
 
-	vals := [2]int{}
+	vals := [2]complex128{}
 	for i, id2 := range monkey.Wait {
 		vals[i] = GetShout(monkeys, id2)
 	}
 
-	tot := 0
+	tot := 0 + 0i
 	switch monkey.Action {
 	case "+":
 		tot = vals[0] + vals[1]
@@ -105,18 +105,20 @@ func GetEquasion(monkeys Monkeys, id string) string {
 func Part1(input string) int {
 	monkeys := parseInput(input)
 
-	return GetShout(monkeys, "root")
+	return int(real(GetShout(monkeys, "root")))
 }
 
 func Part2(input string) int {
 	monkeys := parseInput(input)
+	humn := monkeys["humn"]
+	humn.Shout = 0 + 1i
+	monkeys["humn"] = humn
+	root := monkeys["root"]
+	root.Action = "-"
+	monkeys["root"] = root
 
-	fmt.Println("root equasion:", GetEquasion(monkeys, "root"))
-
-	// stuck that in
-	// https://www.mathpapa.com/equation-solver/
-	// and you get
-	return 3403989691757
+	result := GetShout(monkeys, "root")
+	return -int(real(result) / imag(result))
 }
 
 func Run(input string) {
