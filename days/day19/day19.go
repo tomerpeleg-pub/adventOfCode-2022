@@ -150,20 +150,19 @@ func optimise(blueprint Blueprint) int {
 		state := q.Pop().(State)
 		state = state.Simulate()
 
+		if state.min > 23 {
+			continue
+		}
+
 		if state.Value() > h {
 			h = state.Value()
-			fmt.Println("New value", h, state)
+			// fmt.Println("New value", h, state)
 		}
 		if state.stock[3] > highest {
 			highest = state.stock[3]
 			highestState = state
 			fmt.Println("New highest", highest, state, state.Value(), q.Len())
 		}
-
-		if state.min > 23 {
-			continue
-		}
-
 		for i := 0; i < 4; i++ {
 			newState, ok := state.Purchase(blueprint, i)
 
