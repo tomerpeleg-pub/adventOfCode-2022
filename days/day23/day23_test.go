@@ -5,19 +5,25 @@ import (
 )
 
 const example string = `
-....#..
-..###.#
-#...#.#
-.#...##
-#.###..
-##.#.##
-.#..#..
+..............
+..............
+.......#......
+.....###.#....
+...#...#.#....
+....#...##....
+...#.###......
+...##.#.##....
+....#..#......
+..............
+..............
+..............
+
 `
 
 func TestPart1(t *testing.T) {
 	t.Log("Testing Day23 Part 1")
 
-	want := 21
+	want := 110
 	got := Part1(example)
 
 	if got != want {
@@ -28,7 +34,7 @@ func TestPart1(t *testing.T) {
 func TestPart2(t *testing.T) {
 	t.Log("Testing Day23 Part 2")
 
-	want := 24933642
+	want := 20
 	got := Part2(example)
 
 	if got != want {
