@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"container/heap"
 	"fmt"
-	"math"
 	"strings"
 )
 
@@ -31,8 +30,6 @@ type State struct {
 	start     complex128
 	end       complex128
 	time      int
-	moves     []complex128
-	dist      float64
 }
 
 func (b Blizzard) String() string {
@@ -134,11 +131,11 @@ func parseInput(input string) State {
 	start := 1 + 0i
 	end := complex(float64(w-2), float64(y-1))
 	// fmt.Println(start, end)
-	grid[start] = WALL
-	grid[end] = WALL
+	grid[start-1i] = WALL
+	grid[end+1i] = WALL
 
 	return State{
-		grid, blizzards, w, y, start, end, 0, []complex128{}, dist(start, end),
+		grid, blizzards, w, y, start, end, 0,
 	}
 }
 
@@ -148,11 +145,9 @@ func simulate(s State) State {
 		blizzards: make([]Blizzard, len(s.blizzards)),
 		w:         s.w,
 		h:         s.h,
+		time:      s.time + 1,
 		start:     s.start,
 		end:       s.end,
-		time:      s.time + 1,
-		moves:     s.moves,
-		dist:      s.dist,
 	}
 
 	for i, w := range s.grid {
@@ -164,7 +159,7 @@ func simulate(s State) State {
 	for i, b := range s.blizzards {
 		b[0] += b[1]
 
-		if s2.grid[b[0]] == WALL {
+		if isOut(s, b[0]) {
 			switch b[1] {
 			case N:
 				b[0] += complex(0, float64(s2.h-2))
@@ -199,23 +194,35 @@ func isOut(s State, p complex128) bool {
 	if p == s.start {
 		return false
 	}
-	if real(p) < 0 || imag(p) < 0 || real(p) > float64(s.w) || imag(p) > float64(s.h) {
+	if real(p) <= 0 || imag(p) <= 0 || real(p) >= float64(s.w) || imag(p) >= float64(s.h) {
 		return true
 	}
 	return false
 }
 
-type PriorityQueue []State
+type Node struct {
+	pos   complex128
+	dist  float64
+	time  int
+	moves []complex128
+}
+
+type PriorityQueue []Node
 
 func (pq PriorityQueue) Len() int { return len(pq) }
 func (pq PriorityQueue) Less(i, j int) bool {
 	// return pq[i].time*int(pq[i].dist) < pq[j].time*int(pq[j].dist)
-	// if pq[i].time == pq[j].time {
-	if pq[i].dist != pq[j].dist {
+	if pq[i].time == pq[j].time {
 		return pq[i].dist < pq[j].dist
+
 	} else {
+
 		return pq[i].time < pq[j].time
 	}
+	// if pq[i].dist != pq[j].dist {
+	// } else {
+	// 	return pq[i].time < pq[j].time
+	// }
 	// return  <
 	// }
 	// return
@@ -224,19 +231,12 @@ func (pq PriorityQueue) Swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]
 }
 func (pq *PriorityQueue) Push(x interface{}) {
-	*pq = append(*pq, x.(State))
+	*pq = append(*pq, x.(Node))
 }
 func (pq *PriorityQueue) Pop() (popped interface{}) {
 	popped = (*pq)[len(*pq)-1]
 	*pq = (*pq)[:len(*pq)-1]
 	return
-}
-
-func (s State) Move(start complex128) State {
-	b := append(s.moves, start-s.start)
-	return State{
-		s.grid, s.blizzards, s.w, s.h, start, s.end, s.time, b, dist(start, s.end),
-	}
 }
 
 func printMove(m complex128) string {
@@ -253,54 +253,70 @@ func printMove(m complex128) string {
 	return ""
 }
 
-func findPath(start State) int {
-	queue := make(PriorityQueue, 0)
-	heap.Push(&queue, start)
+func (n Node) Norm() string {
+	return fmt.Sprintf("{%v,%v}", n.pos, n.time)
+}
 
-	highestDay := 0
-	lowestDist := math.MaxFloat64
+func findPath(start State) int {
+	fmt.Println("Finding path", start)
+
+	start.time = 1
+	sims := [500]State{start}
+
+	for i := 1; i < 500; i++ {
+		sims[i] = simulate(sims[i-1])
+	}
+
+	queue := make(PriorityQueue, 0)
+	startNode := Node{
+		pos:   start.start,
+		dist:  dist(start.start, start.end),
+		time:  1,
+		moves: []complex128{},
+	}
+	heap.Push(&queue, startNode)
+
+	visited := map[string]int{}
+
+	// finish := Node{
+	// 	time: math.MaxInt,
+	// }
 
 	for queue.Len() > 0 {
-		cur := heap.Pop(&queue).(State)
-		// if len(cur.moves) > 0 {
-		// 	fmt.Printf("== Day %v, move %v, dist: %v ==\n", cur.time, printMove(cur.moves[len(cur.moves)-1]), dist(cur.start, cur.end))
-		// }
-		// fmt.Println(cur)
-		sim := simulate(cur)
-		// fmt.Println("SIM::")
+		cur := heap.Pop(&queue).(Node)
+		if visited[cur.Norm()] > 0 {
+			continue
+		}
+		visited[cur.Norm()] = cur.time
+		sim := sims[cur.time]
+		// fmt.Printf("== Checking day %v ===\n", cur.time)
 		// fmt.Println(sim)
-		if sim.time > highestDay {
-			fmt.Println("Doing day", sim.time)
-			highestDay = sim.time
-		}
-		if sim.dist < lowestDist {
-			fmt.Println("Lowest dist", sim.dist)
-			lowestDist = sim.dist
-		}
 
 		dirs := [5]complex128{
-			sim.start,
-			sim.start + N,
-			sim.start + W,
-			sim.start + E,
-			sim.start + S,
+			cur.pos,
+			cur.pos + N,
+			cur.pos + W,
+			cur.pos + E,
+			cur.pos + S,
 		}
 
 		for _, dir := range dirs {
 			if dir == sim.end {
-				fmt.Println("Found end, moves:", sim.moves)
+				fmt.Println("Found end, moves:", cur.time, cur.moves)
+
 				return sim.time
 			}
 
-			isStart := sim.start == 1+0i && dir == 1+0i
+			// isStart := dir == 1+0i
+			newState := Node{
+				pos:   dir,
+				dist:  dist(dir, sim.end),
+				time:  sim.time,
+				moves: append(cur.moves, dir),
+			}
 
-			if (sim.grid[dir] == EMPTY) && !isOut(sim, dir) {
-				// fmt.Println("added one", i)
-				newState := sim.Move(dir)
-				heap.Push(&queue, newState)
-			} else if isStart {
-				fmt.Println("waiting a day")
-				newState := sim.Move(dir)
+			if sim.grid[dir] == EMPTY {
+				// fmt.Println("added one", newState.Norm())
 				heap.Push(&queue, newState)
 			}
 		}
