@@ -9,6 +9,7 @@ import (
 	"github.com/tomerpeleg-pub/aoc2022/days/day12"
 	"github.com/tomerpeleg-pub/aoc2022/days/day13"
 	"github.com/tomerpeleg-pub/aoc2022/days/day14"
+	"github.com/tomerpeleg-pub/aoc2022/days/day15"
 	"github.com/tomerpeleg-pub/aoc2022/days/day16"
 	"github.com/tomerpeleg-pub/aoc2022/days/day17"
 	"github.com/tomerpeleg-pub/aoc2022/days/day18"
@@ -61,6 +62,8 @@ func RunDay(day string) {
 		day13.Run(input)
 	case "14":
 		day14.Run(input)
+	case "15":
+		day15.Run(input)
 	case "16":
 		day16.Run(input)
 	case "17":
