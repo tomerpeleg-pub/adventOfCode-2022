@@ -28,7 +28,7 @@ func TestPart1(t *testing.T) {
 func TestPart2(t *testing.T) {
 	t.Log("Testing Day8 Part 2")
 
-	want := 24933642
+	want := 8
 	got := Part2(example8)
 
 	if got != want {

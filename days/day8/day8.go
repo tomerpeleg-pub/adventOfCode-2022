@@ -1,120 +1,141 @@
 package day8
 
 import (
+	"bufio"
 	"fmt"
-	"strconv"
 	"strings"
 )
 
-type Tree struct {
-	Val     int
-	Visible bool
-	x       int
-	y       int
+const (
+	N = 0 - 1i
+	E = 1 + 0i
+	S = 0 + 1i
+	W = -1 + 0i
+)
+
+type Grid struct {
+	vals map[complex128]int
+	w    int
+	h    int
 }
 
-func (t Tree) String() string {
-	if t.Visible {
-		return fmt.Sprintf("+%v+", t.Val)
+func parseInput(input string) Grid {
+	grid := Grid{
+		vals: map[complex128]int{},
+		w:    0,
+		h:    0,
 	}
-	return fmt.Sprintf("-%v-", t.Val)
+
+	reader := strings.NewReader(strings.TrimSpace(input))
+	scanner := bufio.NewScanner(reader)
+
+	y, w := 0.0, 0
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		w = len(line)
+
+		for x, c := range line {
+			v := int(c - '0')
+
+			grid.vals[complex(float64(x), y)] = v
+		}
+
+		y++
+	}
+
+	grid.w = w
+	grid.h = int(y)
+
+	return grid
 }
 
-func parseInput(input string) [][]Tree {
-	lines := strings.Split(strings.TrimSpace(input), "\n")
+func (g Grid) Out(p complex128) bool {
+	_, ok := g.vals[p]
 
-	grid := make([][]Tree, len(lines))
+	return !ok
+}
 
-	for yi, line := range lines {
-		grid[yi] = make([]Tree, len(line))
+func (g Grid) Visible(p complex128) bool {
+	v := g.vals[p]
+	comp := [4]complex128{N, E, S, W}
 
-		for xi, height := range line {
-			val, _ := strconv.Atoi(string(height))
-			grid[yi][xi] = Tree{
-				Val: val,
-				x:   xi,
-				y:   yi,
+dirsLoop:
+	for _, c := range comp {
+		k := p + c
+		for {
+			n, ok := g.vals[k]
+			if !ok {
+				return true
+			} else if n >= v {
+				continue dirsLoop
 			}
+			k += c
 		}
 	}
 
-	return grid
+	return false
+}
+
+func (g Grid) Count(p complex128) int {
+	v := g.vals[p]
+	comp := [4]complex128{N, E, S, W}
+	scenic := 1
+
+dirsLoop:
+	for _, c := range comp {
+		k := p + c
+		tot := 0
+
+		for {
+			n, ok := g.vals[k]
+
+			if !ok {
+				scenic *= tot
+				continue dirsLoop
+			}
+			tot++
+
+			if n >= v {
+				scenic *= tot
+				continue dirsLoop
+			}
+
+			k += c
+		}
+	}
+
+	return scenic
 }
 
 func Part1(input string) int {
 	grid := parseInput(input)
 
-	count := 0
+	tot := 0
 
-	height := len(grid)
-	width := len(grid[0])
-
-	hTop := make([]int, height)
-	hBottom := make([]int, height)
-
-	for i := range hTop {
-		hTop[i] = -1
-		hBottom[i] = -1
-	}
-
-	for y, row := range grid {
-
-		hLeft := -1
-		hRight := -1
-
-		for x, val := range row {
-
-			// left
-			l := val
-			if l.Val > hLeft {
-				hLeft = l.Val
-				if !l.Visible {
-					count++
-				}
-				l.Visible = true
-				grid[l.y][l.x] = l
-			}
-
-			// right
-			r := row[width-x-1]
-			if r.Val > hRight {
-				hRight = r.Val
-				if !r.Visible {
-					count++
-				}
-				r.Visible = true
-				grid[r.y][r.x] = r
-			}
-
-			// top
-			t := grid[y][x]
-			if t.Val > hTop[t.x] {
-				hTop[t.x] = t.Val
-				if !t.Visible {
-					count++
-				}
-				t.Visible = true
-				grid[t.y][t.x] = t
-			}
-
-			// bottom
-			b := grid[height-y-1][x]
-			if b.Val > hBottom[b.x] {
-				hBottom[b.x] = b.Val
-				if !b.Visible {
-					count++
-				}
-				b.Visible = true
-				grid[b.y][b.x] = b
-			}
+	for key := range grid.vals {
+		if grid.Visible(key) {
+			tot++
 		}
 	}
 
-	return count
+	return tot
 }
 
 func Part2(input string) int {
-	return 12
+	grid := parseInput(input)
+
+	highest := 0
+
+	for key := range grid.vals {
+		tot := grid.Count(key)
+
+		if tot > highest {
+			highest = tot
+		}
+	}
+
+	return highest
 }
 
 func Run(input string) {
