@@ -8,84 +8,56 @@ import (
 )
 
 const (
-	N = 0 + -1i
-	E = 1 + 0i
-	S = 0 + 1i
-	W = -1 + 0i
+	N    = 0 - 1i
+	E    = 1 + 0i
+	S    = 0 + 1i
+	W    = -1 + 0i
+	NONE = 0 + 0i
 )
 
 const (
-	WALL  = -1
-	EMPTY = 0
-	WIND  = 1
+	WALL     = -1
+	EMPTY    = 0
+	BLIZZARD = 1
 )
 
+type Blizzard struct {
+	pos complex128
+	dir complex128
+}
+
 type Grid map[complex128]int
-type Blizzard [2]complex128
+
 type State struct {
 	grid      Grid
 	blizzards []Blizzard
-	w         int
-	h         int
+	w         float64
+	h         float64
 	start     complex128
 	end       complex128
-	time      int
-}
-
-func (b Blizzard) String() string {
-	switch b[1] {
-	case N:
-		return "^"
-	case S:
-		return "V"
-	case E:
-		return ">"
-	case W:
-		return "<"
-	}
-	return ""
 }
 
 func (s State) String() string {
-	g := make([][]string, s.h)
-
-	for _, b := range s.blizzards {
-		x := int(real(b[0]))
-		y := int(imag(b[0]))
-
-		if g[y] == nil {
-			g[y] = make([]string, s.w)
-		}
-
-		if s.grid[b[0]] == 1 {
-			g[y][x] = b.String()
-		} else {
-			g[y][x] = fmt.Sprint(s.grid[b[0]])
-		}
-	}
-
-	// fmt.Println("end", s.end)
+	fmt.Println("Printing grid:", s.w, s.h)
 	str := ""
-	for y := 0; y < s.h; y++ {
-		for x := 0; x < s.w; x++ {
-			p := complex(float64(x), float64(y))
 
-			if p == s.start {
-				str += "S"
-			} else if p == s.end {
-				str += "E"
-			} else if s.grid[p] == WALL {
+	for y := 0.0; y < s.h; y++ {
+		for x := 0.0; x < s.w; x++ {
+			p := complex(x, y)
+			switch s.grid[p] {
+			case WALL:
 				str += "#"
-			} else {
-				if g[y] != nil && g[y][x] != "" {
-					str += g[y][x]
-				} else {
-					str += "."
-				}
+			case EMPTY:
+				str += "."
+			case BLIZZARD:
+				str += "o"
+			default:
+				str += fmt.Sprint(s.grid[p])
 			}
 		}
 		str += "\n"
 	}
+
 	return str
 }
 
@@ -96,136 +68,92 @@ func parseInput(input string) State {
 	grid := Grid{}
 	blizzards := []Blizzard{}
 
-	y, w := 0, 0
+	y := 0
+
+	lastEmpty := 0 + 0i
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		w = len(line)
 
 		for x, char := range line {
 			p := complex(float64(x), float64(y))
 
 			switch char {
-			case '.':
-				grid[p] = EMPTY
 			case '#':
 				grid[p] = WALL
-			case '>':
-				blizzards = append(blizzards, Blizzard{p, E})
-				grid[p]++
-			case '<':
-				blizzards = append(blizzards, Blizzard{p, W})
-				grid[p]++
-			case 'v':
-				blizzards = append(blizzards, Blizzard{p, S})
-				grid[p]++
+			case '.':
+				grid[p] = EMPTY
+				lastEmpty = p
 			case '^':
+				grid[p] = BLIZZARD
 				blizzards = append(blizzards, Blizzard{p, N})
-				grid[p]++
+			case '>':
+				grid[p] = BLIZZARD
+				blizzards = append(blizzards, Blizzard{p, E})
+			case 'v':
+				grid[p] = BLIZZARD
+				blizzards = append(blizzards, Blizzard{p, S})
+			case '<':
+				grid[p] = BLIZZARD
+				blizzards = append(blizzards, Blizzard{p, W})
 			}
 		}
 
 		y++
 	}
 
-	start := 1 + 0i
-	end := complex(float64(w-2), float64(y-1))
-	// fmt.Println(start, end)
-	grid[start-1i] = WALL
-	grid[end+1i] = WALL
+	start := complex(1, 0)
+	end := lastEmpty
 
-	return State{
-		grid, blizzards, w, y, start, end, 0,
-	}
+	grid[start+N] = WALL
+	grid[end+S] = WALL
+
+	return State{grid, blizzards, real(end) + 2, imag(end) + 1, start, end}
 }
 
-func simulate(s State) State {
-	s2 := State{
-		grid:      map[complex128]int{},
-		blizzards: make([]Blizzard, len(s.blizzards)),
-		w:         s.w,
-		h:         s.h,
-		time:      s.time + 1,
-		start:     s.start,
-		end:       s.end,
+func simulate(state State) State {
+	g2 := Grid{}
+	b2 := make([]Blizzard, len(state.blizzards))
+
+	for pos, cell := range state.grid {
+		g2[pos] = cell
 	}
 
-	for i, w := range s.grid {
-		if w == WALL {
-			s2.grid[i] = w
+	for i, blizzard := range state.blizzards {
+		g2[blizzard.pos]--
+		nb := Blizzard{
+			pos: blizzard.pos + blizzard.dir,
+			dir: blizzard.dir,
 		}
-	}
-
-	for i, b := range s.blizzards {
-		b[0] += b[1]
-
-		if isOut(s, b[0]) {
-			switch b[1] {
+		if g2[nb.pos] == WALL {
+			switch nb.dir {
 			case N:
-				b[0] += complex(0, float64(s2.h-2))
+				nb.pos += complex(0, state.h-2)
 			case S:
-				b[0] -= complex(0, float64(s2.h-2))
+				nb.pos -= complex(0, state.h-2)
 			case E:
-				b[0] -= complex(float64(s2.w-2), 0)
+				nb.pos -= complex(state.w-2, 0)
 			case W:
-				b[0] += complex(float64(s2.w-2), 0)
+				nb.pos += complex(state.w-2, 0)
 			}
 		}
-		s2.blizzards[i] = b
-		s2.grid[b[0]]++
+		g2[nb.pos]++
+		b2[i] = nb
 	}
 
-	return s2
-}
-
-func abs(a float64) float64 {
-	if a < 0 {
-		return -a
-	}
-
-	return a
-}
-
-func dist(a complex128, b complex128) float64 {
-	return abs(real(a)-real(b)) + abs(imag(a)-imag(b))
-}
-
-func isOut(s State, p complex128) bool {
-	if p == s.start {
-		return false
-	}
-	if real(p) <= 0 || imag(p) <= 0 || real(p) >= float64(s.w) || imag(p) >= float64(s.h) {
-		return true
-	}
-	return false
+	return State{g2, b2, state.w, state.h, state.start, state.end}
 }
 
 type Node struct {
-	pos   complex128
-	dist  float64
-	time  int
-	moves []complex128
+	dist int
+	pos  complex128
 }
 
 type PriorityQueue []Node
 
 func (pq PriorityQueue) Len() int { return len(pq) }
 func (pq PriorityQueue) Less(i, j int) bool {
-	// return pq[i].time*int(pq[i].dist) < pq[j].time*int(pq[j].dist)
-	if pq[i].time == pq[j].time {
-		return pq[i].dist < pq[j].dist
-
-	} else {
-
-		return pq[i].time < pq[j].time
-	}
-	// if pq[i].dist != pq[j].dist {
-	// } else {
-	// 	return pq[i].time < pq[j].time
-	// }
-	// return  <
-	// }
-	// return
+	return pq[i].dist < pq[j].dist
 }
 func (pq PriorityQueue) Swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]
@@ -239,103 +167,71 @@ func (pq *PriorityQueue) Pop() (popped interface{}) {
 	return
 }
 
-func printMove(m complex128) string {
-	switch m {
-	case N:
-		return "N"
-	case S:
-		return "S"
-	case E:
-		return "E"
-	case W:
-		return "W"
-	}
-	return ""
-}
+func findPath(initial State) (int, State) {
 
-func (n Node) Norm() string {
-	return fmt.Sprintf("{%v,%v}", n.pos, n.time)
-}
+	queue := &PriorityQueue{}
+	heap.Init(queue)
+	heap.Push(queue, Node{dist: 0, pos: initial.start})
 
-func findPath(start State) int {
-	fmt.Println("Finding path", start)
+	cube := []State{initial}
 
-	start.time = 1
-	sims := [500]State{start}
-
-	for i := 1; i < 500; i++ {
-		sims[i] = simulate(sims[i-1])
-	}
-
-	queue := make(PriorityQueue, 0)
-	startNode := Node{
-		pos:   start.start,
-		dist:  dist(start.start, start.end),
-		time:  1,
-		moves: []complex128{},
-	}
-	heap.Push(&queue, startNode)
-
-	visited := map[string]int{}
-
-	// finish := Node{
-	// 	time: math.MaxInt,
-	// }
+	visited := []map[complex128]bool{}
 
 	for queue.Len() > 0 {
-		cur := heap.Pop(&queue).(Node)
-		if visited[cur.Norm()] > 0 {
+		node := heap.Pop(queue).(Node)
+		if node.dist >= len(visited) {
+			visited = append(visited, map[complex128]bool{})
+		}
+		if visited[node.dist][node.pos] {
 			continue
 		}
-		visited[cur.Norm()] = cur.time
-		sim := sims[cur.time]
-		// fmt.Printf("== Checking day %v ===\n", cur.time)
-		// fmt.Println(sim)
-
-		dirs := [5]complex128{
-			cur.pos,
-			cur.pos + N,
-			cur.pos + W,
-			cur.pos + E,
-			cur.pos + S,
+		if node.pos == initial.end {
+			return node.dist, cube[node.dist]
 		}
 
+		visited[node.dist][node.pos] = true
+
+		if node.dist+1 >= len(cube) {
+			cube = append(cube, simulate(cube[len(cube)-1]))
+		}
+
+		layer := cube[node.dist+1]
+		dirs := [5]complex128{N, E, S, W, NONE}
+
 		for _, dir := range dirs {
-			if dir == sim.end {
-				fmt.Println("Found end, moves:", cur.time, cur.moves)
+			np := node.pos + dir
 
-				return sim.time
-			}
-
-			// isStart := dir == 1+0i
-			newState := Node{
-				pos:   dir,
-				dist:  dist(dir, sim.end),
-				time:  sim.time,
-				moves: append(cur.moves, dir),
-			}
-
-			if sim.grid[dir] == EMPTY {
-				// fmt.Println("added one", newState.Norm())
-				heap.Push(&queue, newState)
+			if layer.grid[np] == EMPTY {
+				heap.Push(queue, Node{pos: np, dist: node.dist + 1})
 			}
 		}
 	}
 
-	return -1
+	return -1, initial
 }
 
 func Part1(input string) int {
-	fmt.Println("== INITIAL ====")
-	initialState := parseInput(input)
-	fmt.Println(initialState)
+	state := parseInput(input)
 
-	result := findPath(initialState)
-	return result
+	time, _ := findPath(state)
+	return time
 }
 
 func Part2(input string) int {
-	return 12
+	state := parseInput(input)
+
+	// to the end
+	s1, s1State := findPath(state)
+	s1State.start, s1State.end = s1State.end, s1State.start
+
+	// end to start
+	s2, s2State := findPath(s1State)
+	s2State.start, s2State.end = s2State.end, s2State.start
+
+	// start to end again
+	s3, _ := findPath(s2State)
+
+	return s1 + s2 + s3
 }
 
 func Run(input string) {
